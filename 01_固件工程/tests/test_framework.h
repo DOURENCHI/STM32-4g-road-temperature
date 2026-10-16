@@ -2,8 +2,8 @@
  * @file    test_framework.h
  * @brief   极简单元测试框架（不用第三方库，保证在任何机器上都能一键编译）
  *
- * 为什么不用 Unity / CMock：这个工程要在面试现场演示「怎么验证代码」，
- * 依赖越少越不容易出问题。整个测试框架就是下面这几个宏。
+ * 为什么不用 Unity / CMock：不引入第三方依赖，保证在任何机器上
+ * 拉下来就能一键编译运行。整个测试框架就是下面这几个宏。
  */
 #ifndef TEST_FRAMEWORK_H
 #define TEST_FRAMEWORK_H

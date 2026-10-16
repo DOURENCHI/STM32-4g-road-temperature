@@ -8,7 +8,7 @@
  *          - GPIO 输入/输出方向切换的两个宏：原样保留论文的寄存器写法
  *          - 40 位帧格式与校验和：论文 3.1.1 节
  *
- * @tag     [2026 复盘补做]  两处改动：
+ * @tag     [2026 重建新增]  两处改动：
  *          1. 新增 DHT11_Read_RawBits()：把「测时序」和「解数据」拆开。
  *             原实现把两者揉在 DHT11_Read_Data() 里，一旦读数出错，
  *             你无法判断是时序没测准还是解析写错了。拆开之后，
@@ -48,7 +48,7 @@
 #define DHT11_OK        0u
 #define DHT11_ERR       1u      /* 传感器无响应 */
 #define DHT11_ERR_CRC   2u      /* 校验和错误 */
-#define DHT11_ERR_RANGE 3u      /* 读数超出官方量程 [2026 复盘补做] */
+#define DHT11_ERR_RANGE 3u      /* 读数超出官方量程 [2026 重建新增] */
 
 /**
  * @brief 初始化 DHT11 的数据引脚
@@ -85,7 +85,7 @@ uint8_t DHT11_Read_Bit(void);
 uint8_t DHT11_Read_Byte(void);
 
 /**
- * @brief [2026 复盘补做] 读出 40 位原始位流，解析交给上层
+ * @brief [2026 重建新增] 读出 40 位原始位流，解析交给上层
  * @param bits40 输出缓冲，长度必须 >= 40，元素为 0/1
  * @return DHT11_OK / DHT11_ERR
  *

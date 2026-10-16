@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>基于 4G 通信的道路温度采集系统</title>
-<meta name="description" content="2023 年本科毕业设计，2026 年复盘重建：DHT11 单总线采集、STM32F103 组帧、RS485 传输、4G Cat.1 回传云端。">
+<meta name="description" content="2023 年本科毕业设计，2026 年重建补全：DHT11 单总线采集、STM32F103 组帧、RS485 传输、4G Cat.1 回传云端。">
 <style>
   :root{
     --bg:#f4f6f9; --card:#ffffff; --line:#e2e7ee;
@@ -106,11 +106,11 @@
 <div class="wrap">
 
   <header>
-    <div class="kicker">本科毕业设计 · 2023 实做 ｜ 2026 复盘重建</div>
+    <div class="kicker">本科毕业设计 · 2023 实做 ｜ 2026 重建补全</div>
     <h1>基于 4G 通信的道路温度采集系统</h1>
     <p class="lede">
       2023 年的本科毕设，要解决的是「把远端道路的温湿度采上来、经 4G 传回云端」。
-      当年留下的只有一份论文和几段零散代码；2026 年复盘时，把它们重建成了一套分层完整的 STM32 工程 ——
+      当年留下的只有一份论文和几段零散代码；2026 年在此基础上，把它们重建成了一套分层完整的 STM32 工程 ——
       采集、组帧、传输、确认、补传各有归属，不再揉在一个函数里。
     </p>
     <div class="chain">
@@ -124,7 +124,7 @@
     <a class="card c-blue" href="./06_项目说明书/项目说明书.html">
       <div class="num">01</div>
       <h3>项目说明书</h3>
-      <p>完全没有电子基础也能看懂。从「为什么要做」一路讲到代码逐行走读，最后一章是面试复述训练。</p>
+      <p>完全没有电子基础也能看懂。从「为什么要做」一路讲到代码逐行走读，再到项目的适用范围与已知边界。</p>
       <div class="meta">11 章 + 2 附录 · 36 条术语表 · 11 张实绘图</div>
       <span class="go">打开 →</span>
     </a>
@@ -160,7 +160,7 @@
 
   <h2>先说清楚边界</h2>
   <div class="box warn">
-    <p class="lead">这是一份本科毕业设计，不是成熟产品。三件事我主动写在前面：</p>
+    <p class="lead">这是一份本科毕业设计，不是成熟产品。三件事在开头交代清楚：</p>
     <ol>
       <li>
         <b>硬件已不在手。</b>DHT11、战舰 STM32F103 板、ATK-IDM751C 模块都已经不在身边。
@@ -168,13 +168,13 @@
       </li>
       <li>
         <b>论文里从来没有「断网补传」。</b>数据帧 CRC16 校验、断网本地缓存、重传与 ACK 确认，
-        都是 2026 年复盘时补做的。论文全文检索「断网 / 补传 / 重传 / CRC」，出现次数均为 0；
-        源文件头部一律标注了时间线，不会含糊成「当年做的就是这套」。
+        都是 2026 年重建时新增的。论文全文检索「断网 / 补传 / 重传 / CRC」，出现次数均为 0；
+        源文件头部一律标注为「2026 重建新增」，时间线以标签为准。
       </li>
       <li>
         <b>论文有一处实测数据与传感器分辨率对不上。</b>论文写的温度带两位小数（18.83 ℃），
         但 DHT11 的分辨率就是 1 ℃，物理上读不出这个精度；带 0.1 ℃ 的是 DHT22 / AM2302。
-        这一点被追问时如实说明，不做辩解。
+        本工程在这一点上以器件规格为准。
       </li>
     </ol>
   </div>
@@ -182,7 +182,7 @@
   <footer>
     <div class="tags">
       <span class="tag t-green">2023 实做</span>
-      <span class="tag t-blue">2026 复盘补做</span>
+      <span class="tag t-blue">2026 重建新增</span>
       <span class="tag t-gray">未经硬件回归验证</span>
     </div>
     <p class="foot-note">

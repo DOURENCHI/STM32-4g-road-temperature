@@ -1,7 +1,7 @@
 /**
  * @file    app_protocol.c
  * @brief   应用层数据帧：组帧 / 解析（纯逻辑，不依赖任何硬件）
- * @tag     [2026 复盘补做] 序号 + 时间戳 + CRC16 的帧结构
+ * @tag     [2026 重建新增] 序号 + 时间戳 + CRC16 的帧结构
  * @note    可独立编译：gcc -c app_protocol.c
  */
 #include "app_protocol.h"
