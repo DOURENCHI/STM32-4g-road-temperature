@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>基于 4G 通信的道路温度采集 · 链路演示</title>
+<style>
+  :root{
+    --bg:#f4f6f9; --card:#ffffff; --line:#e3e7ee; --line2:#eef1f6;
+    --tx:#1b2430; --tx2:#5b6675; --tx3:#8b95a5;
+    --blue:#1a5fb4; --blue-l:#e7f0fb;
+    --teal:#0f7b6c; --teal-l:#e3f5f1;
+    --purple:#6741b8; --purple-l:#efeafb;
+    --cyan:#0b7285; --cyan-l:#e3f2f5;
+    --orange:#d9480f; --orange-l:#fdeee6;
+    --green:#2f9e44; --green-l:#e8f6ec;
+    --red:#d92d20; --red-l:#fdecea;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--tx);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:14px; line-height:1.65;
+  }
+  .wrap{max-width:1160px; margin:0 auto; padding:26px 20px 48px}
+
+  header h1{font-size:20px; font-weight:600; margin:0 0 6px}
+  header .sub{color:var(--tx2); font-size:13px}
+  header .badge{
+    display:inline-block; margin-left:8px; padding:2px 9px; border-radius:20px;
+    background:var(--orange-l); color:var(--orange); font-size:12px; font-weight:500;
+    vertical-align:2px;
+  }
+
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px}
+  .card + .card{margin-top:16px}
+  .card-title{font-size:14px; font-weight:600; margin:0 0 4px}
+  .card-note{font-size:12px; color:var(--tx3); margin:0 0 14px}
+
+  /* ---------- 四层链路 ---------- */
+  .chain{position:relative; display:flex; align-items:stretch; gap:0; margin-top:6px}
+  .node{
+    flex:1; border-radius:12px; padding:14px 12px; text-align:center;
+    border:1.5px solid var(--line); background:#fbfcfe;
+    transition:box-shadow .18s, border-color .18s, background .18s;
+  }
+  .node .ly{font-size:11px; font-weight:600; letter-spacing:.4px; margin-bottom:6px}
+  .node .nm{font-size:15px; font-weight:600; margin-bottom:3px}
+  .node .ds{font-size:12px; color:var(--tx2); line-height:1.5}
+  .node .if{font-size:11px; color:var(--tx3); margin-top:8px; padding-top:7px; border-top:1px dashed var(--line)}
+  .node[data-k="0"]{border-color:#c9e3d2}
+  .node[data-k="1"]{border-color:#c6dcf4}
+  .node[data-k="2"]{border-color:#d6cbef}
+  .node[data-k="3"]{border-color:#c5e2e8}
+  .node[data-k="0"] .ly{color:var(--green)}
+  .node[data-k="1"] .ly{color:var(--blue)}
+  .node[data-k="2"] .ly{color:var(--purple)}
+  .node[data-k="3"] .ly{color:var(--cyan)}
+  .node.hot{background:#fff; box-shadow:0 0 0 3px rgba(26,95,180,.14); transform:translateY(-1px)}
+  .node.hot[data-k="0"]{box-shadow:0 0 0 3px rgba(47,158,68,.18)}
+  .node.hot[data-k="1"]{box-shadow:0 0 0 3px rgba(26,95,180,.18)}
+  .node.hot[data-k="2"]{box-shadow:0 0 0 3px rgba(103,65,184,.18)}
+  .node.hot[data-k="3"]{box-shadow:0 0 0 3px rgba(11,114,133,.18)}
+  .lnk{width:38px; display:flex; align-items:center; justify-content:center; color:var(--tx3); font-size:16px; flex:0 0 38px}
+
+  .packet{
+    position:absolute; top:-11px; width:12px; height:12px; border-radius:50%;
+    background:var(--blue); box-shadow:0 0 0 4px rgba(26,95,180,.14);
+    opacity:0; transition:left .55s cubic-bezier(.4,0,.2,1), opacity .2s; pointer-events:none;
+  }
+  .packet.show{opacity:1}
+
+  /* ---------- 控制栏 ---------- */
+  .ctrl{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
+  .btn{
+    border:1px solid var(--line); background:#fff; color:var(--tx);
+    padding:8px 15px; border-radius:9px; font-size:13px; cursor:pointer;
+    font-family:inherit; transition:background .15s, border-color .15s;
+  }
+  .btn:hover{background:#f7f9fc; border-color:#cfd6e0}
+  .btn.primary{background:var(--blue); border-color:var(--blue); color:#fff}
+  .btn.primary:hover{background:#17539e}
+  .btn.danger{background:#fff; border-color:#f0c6c2; color:var(--red)}
+  .btn.danger:hover{background:var(--red-l)}
+  .btn.danger.on{background:var(--red); border-color:var(--red); color:#fff}
+  .seg{display:flex; border:1px solid var(--line); border-radius:9px; overflow:hidden}
+  .seg button{
+    border:0; background:#fff; padding:8px 12px; font-size:12px; cursor:pointer;
+    font-family:inherit; color:var(--tx2); border-right:1px solid var(--line2);
+  }
+  .seg button:last-child{border-right:0}
+  .seg button.on{background:var(--blue-l); color:var(--blue); font-weight:600}
+  .spacer{flex:1}
+  .clock{font-variant-numeric:tabular-nums; font-size:13px; color:var(--tx2)}
+  .clock b{color:var(--tx); font-weight:600; font-size:15px}
+
+  /* ---------- 主区 ---------- */
+  .grid{display:grid; grid-template-columns:1fr 306px; gap:16px; margin-top:16px}
+  @media (max-width:900px){ .grid{grid-template-columns:1fr} }
+
+  .canvasbox{position:relative; width:100%; height:328px}
+  canvas{width:100%; height:100%; display:block}
+  .legend{display:flex; gap:18px; flex-wrap:wrap; margin-top:12px; font-size:12px; color:var(--tx2)}
+  .legend i{display:inline-block; width:14px; height:3px; border-radius:2px; margin-right:6px; vertical-align:3px}
+
+  /* ---------- 状态面板 ---------- */
+  .stat{display:flex; justify-content:space-between; align-items:baseline; padding:9px 0; border-bottom:1px solid var(--line2)}
+  .stat:last-child{border-bottom:0}
+  .stat .k{font-size:12.5px; color:var(--tx2)}
+  .stat .v{font-size:15px; font-weight:600; font-variant-numeric:tabular-nums}
+  .v.ok{color:var(--green)} .v.bad{color:var(--red)} .v.warn{color:var(--orange)} .v.mute{color:var(--tx3)}
+
+  .bar{height:7px; border-radius:4px; background:var(--line2); overflow:hidden; margin-top:8px}
+  .bar > i{display:block; height:100%; width:0; background:var(--orange); border-radius:4px; transition:width .25s}
+
+  .logs{margin-top:14px; height:210px; overflow-y:auto; font-size:11.5px;
+        font-family:ui-monospace,Consolas,monospace; line-height:1.75;
+        background:#fafbfd; border:1px solid var(--line2); border-radius:10px; padding:9px 11px}
+  .logs div{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .lg-ok{color:var(--green)} .lg-off{color:var(--red)} .lg-rt{color:var(--purple)}
+  .lg-info{color:var(--tx3)} .lg-up{color:var(--blue)}
+
+  .disc{margin-top:16px; font-size:12px; color:var(--tx2); line-height:1.8}
+  .disc b{color:var(--tx)}
+  .disc .kw{background:var(--orange-l); color:var(--orange); padding:1px 6px; border-radius:5px; font-weight:500}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>基于 4G 通信的道路温度采集 · 链路演示<span class="badge">软件回放 · 非真机实录</span></h1>
+    <div class="sub">本科毕业设计（2023）· 窦仁驰 · 安徽工程大学 电子信息工程 · 指导教师 张艳娜 副研究员</div>
+  </header>
+
+  <div class="card" style="margin-top:18px">
+    <div class="card-title">数据链路：四个层次，一条链路</div>
+    <div class="card-note">点击「发送一帧」可以手动触发一次数据上行；也可以直接开「自动演示」看完整剧情。</div>
+
+    <div class="chain" id="chain">
+      <div class="packet" id="packet"></div>
+      <div class="node" data-k="0">
+        <div class="ly">感知层</div>
+        <div class="nm">DHT11</div>
+        <div class="ds">温湿度传感器<br>数字输出</div>
+        <div class="if">单总线 · PG11</div>
+      </div>
+      <div class="lnk">→</div>
+      <div class="node" data-k="1">
+        <div class="ly">控制层</div>
+        <div class="nm">STM32F103</div>
+        <div class="ds">时序解析 · 组帧<br>CRC 校验</div>
+        <div class="if">RS485 · USART2</div>
+      </div>
+      <div class="lnk">→</div>
+      <div class="node" data-k="2">
+        <div class="ly">通信层</div>
+        <div class="nm">4G Cat.1 DTU</div>
+        <div class="ds">ATK-IDM751C<br>AT 指令 · 透传</div>
+        <div class="if">4G 网络</div>
+      </div>
+      <div class="lnk">→</div>
+      <div class="node" data-k="3">
+        <div class="ly">平台层</div>
+        <div class="nm">原子云 + 上位机</div>
+        <div class="ds">设备注册<br>数据接收与绘图</div>
+        <div class="if">ACK 确认</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ctrl">
+      <button class="btn primary" id="btnAuto">▶ 自动演示</button>
+      <button class="btn" id="btnStep">发送一帧</button>
+      <button class="btn danger" id="btnOffline">注入断网</button>
+      <button class="btn" id="btnReset">重置</button>
+      <div class="seg" id="segSpeed">
+        <button data-s="1">1×</button>
+        <button data-s="3" class="on">3×</button>
+        <button data-s="8">8×</button>
+      </div>
+      <div class="spacer"></div>
+      <div class="clock">采集时刻 <b id="clk">07:00</b> &nbsp;|&nbsp; 序号 <b id="seqNo">0</b> / 200</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-title">温湿度回放曲线</div>
+      <div class="card-note">数据来自论文 4.3 节的实测趋势（原文记录：温度 18.83→26.45 ℃，湿度 51.07→21.97 %RH，连续约 3 小时）。</div>
+      <div class="canvasbox"><canvas id="cv"></canvas></div>
+      <div class="legend">
+        <span><i style="background:var(--orange)"></i>温度 ℃（已上传云端）</span>
+        <span><i style="background:var(--blue)"></i>湿度 %RH（已上传云端）</span>
+        <span><i style="background:var(--orange); opacity:.35"></i>断网期数据（滞留本地缓存）</span>
+        <span><i style="background:var(--purple)"></i>补传到达云端的帧</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">节点状态</div>
+      <div class="card-note">模拟 2026 年复盘补做后的行为</div>
+
+      <div class="stat"><span class="k">4G 链路</span><span class="v ok" id="stLink">在线</span></div>
+      <div class="stat"><span class="k">云端已收到</span><span class="v" id="stCloud">0</span></div>
+      <div class="stat"><span class="k">本次已上传</span><span class="v" id="stUp">0</span></div>
+      <div class="stat"><span class="k">本地缓存积压</span><span class="v mute" id="stCache">0</span></div>
+      <div class="bar"><i id="barCache"></i></div>
+      <div class="stat" style="margin-top:6px"><span class="k">其中补传成功</span><span class="v warn" id="stRt">0</span></div>
+      <div class="stat"><span class="k">采集失败</span><span class="v mute" id="stErr">0</span></div>
+      <div class="stat"><span class="k">数据缺口</span><span class="v ok" id="stGap">0</span></div>
+
+      <div class="logs" id="logs"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="disc">
+      <b>这个页面是什么：</b>一次可交互的软件回放。它把论文里的实测趋势，在浏览器里按「采集 → 组帧 → 4G 上行 → 云端确认 → 断网缓存 → 恢复补传」整条链路演一遍，
+      用来讲清系统的行为，<b>不是真机运行记录</b>（硬件已不在手）。
+
+      <br><br>
+      <b>演示时值得指着讲的两点：</b>
+      ① 断网期间曲线会「停住」，恢复后有一段数据被标记为
+      <span class="kw">补传</span>一次性补齐，而云端收到的总数一条不差 —— 这就是「本地缓存 + 序号 + 重传」这套机制存在的意义（2023 年原版没有这一段）。
+      ② 曲线上的方波状台阶不是画得不好看：DHT11 的分辨率就是 1 ℃ / 1 %RH，读数只能是整数格。
+      论文里 18.83 ℃ 这类两位小数的记录与器件规格对不上，这是需要如实说明的一处不一致。
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ================= 数据：论文实测趋势 ================= */
+  /* 论文 4.3：7:00 - 10:20，约 3 小时 20 分，每分钟一个点。
+     温度 18 -> 26 ℃ 缓慢上升；湿度 51 -> 22 %RH 总体下降，中段有几次小幅回升。
+     用整数，因为 DHT11 的分辨率就是 1 ℃ / 1 %RH。 */
+  var N = 200, START_MIN = 7*60;
+  var DATA = (function(){
+    var a = [], i, t, h;
+    for (i = 0; i < N; i++){
+      t = 18 + Math.round(8 * i / (N - 1));
+      h = 51 - Math.round(29 * i / (N - 1));
+      if (i >= 100 && i <= 125) h += 3;   /* 论文里湿度中间几次小幅回升 */
+      a.push({ i:i, temp:t, humi:h });
+    }
+    return a;
+  })();
+
+  function hhmm(min){
+    var h = Math.floor(min/60), m = min%60;
+    return (h<10?"0":"") + h + ":" + (m<10?"0":"") + m;
+  }
+
+  /* ================= 状态 ================= */
+  var S = {
+    idx:0,            /* 下一个要采集的点 */
+    seq:0,
+    online:true,
+    running:false,
+    speed:3,
+    timer:null,
+    cache:[],         /* 本地缓存（断网期积压） */
+    cloud:[],         /* 云端已收到 */
+    uploaded:0,
+    retrans:0,
+    failed:0,
+    offlineBand:[]    /* 用于图上标记断网区间 */
+  };
+
+  var el = function(id){ return document.getElementById(id); };
+  var chain = el('chain'), packet = el('packet'), nodes = chain.querySelectorAll('.node');
+  var cv = el('cv'), ctx = cv.getContext('2d');
+
+  /* ================= 日志 ================= */
+  function log(cls, msg){
+    var box = el('logs');
+    var d = document.createElement('div');
+    d.className = cls;
+    d.textContent = msg;
+    box.appendChild(d);
+    box.scrollTop = box.scrollHeight;
+    while (box.childNodes.length > 260) box.removeChild(box.firstChild);
+  }
+
+  /* ================= 链路动画 ================= */
+  var chainBusy = false;
+  function flashChain(){
+    if (chainBusy) return;          /* 上一次动画没播完就跳过，避免叠加 */
+    chainBusy = true;
+
+    var k = 0;
+    (function step(){
+      if (k > 0 && k - 1 < nodes.length) nodes[k-1].classList.remove('hot');
+      if (k >= nodes.length) return;
+      nodes[k].classList.add('hot');
+      movePacketTo(nodes[k]);
+      k++;
+      setTimeout(step, 150);
+    })();
+
+    setTimeout(function(){
+      for (var i=0;i<nodes.length;i++) nodes[i].classList.remove('hot');
+      packet.classList.remove('show');
+      chainBusy = false;
+    }, 150 * (nodes.length + 1));
+  }
+
+  function movePacketTo(node){
+    var w = chain.clientWidth;
+    if (!w) return;
+    var x = node.offsetLeft + node.offsetWidth/2 - 6;
+    packet.classList.add('show');
+    packet.style.left = x + 'px';
+  }
+
+  /* ================= 绘图 ================= */
+  var PAD = { l:52, r:56, t:22, b:34 };
+  var TMIN = 15, TMAX = 30, HMIN = 15, HMAX = 55;
+
+  function resize(){
+    var dpr = window.devicePixelRatio || 1;
+    var box = cv.parentNode;
+    cv.width  = Math.max(320, box.clientWidth) * dpr;
+    cv.height = 328 * dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    draw();
+  }
+
+  function X(i, W){ return PAD.l + (W - PAD.l - PAD.r) * (i / (N - 1)); }
+  function YT(v, H){ return PAD.t + (H - PAD.t - PAD.b) * (1 - (v - TMIN)/(TMAX - TMIN)); }
+  function YH(v, H){ return PAD.t + (H - PAD.t - PAD.b) * (1 - (v - HMIN)/(HMAX - HMIN)); }
+
+  function draw(){
+    var W = cv.clientWidth, H = 328;
+    ctx.clearRect(0,0,W,H);
+
+    /* 网格 */
+    ctx.strokeStyle = '#eef1f6'; ctx.lineWidth = 1;
+    var i, y;
+    for (i = 0; i <= 5; i++){
+      y = PAD.t + (H - PAD.t - PAD.b) * i / 5;
+      ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W-PAD.r, y); ctx.stroke();
+    }
+
+    /* 坐标轴标签 */
+    ctx.fillStyle = '#8b95a5'; ctx.font = '11px sans-serif';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (i = 0; i <= 5; i++){
+      var tv = TMAX - (TMAX-TMIN) * i/5;
+      ctx.fillText(tv.toFixed(0), PAD.l - 8, PAD.t + (H-PAD.t-PAD.b)*i/5);
+    }
+    ctx.fillStyle = '#d9480f';
+    ctx.textAlign = 'left';
+    ctx.fillText('℃', PAD.l - 8, PAD.t - 10);
+
+    ctx.fillStyle = '#8b95a5';
+    ctx.textAlign = 'left';
+    for (i = 0; i <= 5; i++){
+      var hv = HMAX - (HMAX-HMIN) * i/5;
+      ctx.fillText(hv.toFixed(0), W - PAD.r + 8, PAD.t + (H-PAD.t-PAD.b)*i/5);
+    }
+    ctx.fillStyle = '#1971c2';
+    ctx.fillText('%RH', W - PAD.r + 8, PAD.t - 10);
+
+    /* 时间轴刻度 */
+    ctx.fillStyle = '#8b95a5'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (i = 0; i < N; i += 40){
+      ctx.fillText(hhmm(START_MIN + i), X(i, W), H - PAD.b + 10);
+    }
+
+    /* 断网区间底纹 */
+    S.offlineBand.forEach(function(b){
+      var x0 = X(b[0], W), x1 = X(b[1], W);
+      ctx.fillStyle = 'rgba(217,45,32,.055)';
+      ctx.fillRect(x0, PAD.t, Math.max(1, x1-x0), H - PAD.t - PAD.b);
+    });
+
+    /* 已上传数据的两条折线 */
+    drawLine('temp', '#d9480f', 2.2, YT);
+    drawLine('humi', '#1971c2', 2.2, YH);
+
+    /* 缓存中滞留的数据（半透明点） */
+    ctx.fillStyle = 'rgba(217,72,15,.32)';
+    S.cache.forEach(function(p){
+      ctx.beginPath(); ctx.arc(X(p.i,W), YT(p.temp,H), 2.4, 0, Math.PI*2); ctx.fill();
+    });
+    ctx.fillStyle = 'rgba(25,113,194,.32)';
+    S.cache.forEach(function(p){
+      ctx.beginPath(); ctx.arc(X(p.i,W), YH(p.humi,H), 2.4, 0, Math.PI*2); ctx.fill();
+    });
+
+    /* 补传到的帧：紫色标记 */
+    ctx.fillStyle = '#6741b8';
+    S.cloud.forEach(function(p){
+      if (p.rt){
+        ctx.beginPath(); ctx.arc(X(p.i,W), YT(p.temp,H), 3.4, 0, Math.PI*2); ctx.fill();
+      }
+    });
+
+    /* 当前进度线 */
+    var cx = X(Math.max(0, S.idx-1), W);
+    ctx.strokeStyle = 'rgba(27,36,48,.25)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx, PAD.t); ctx.lineTo(cx, H-PAD.b); ctx.stroke();
+  }
+
+  function drawLine(field, color, lw, yfn){
+    var W = cv.clientWidth, H = 328, pts = [], i;
+    /* 只画云端已收到的点，这样断网期曲线会明显「断掉」 */
+    for (i = 0; i < S.cloud.length; i++){
+      var p = S.cloud[i];
+      var x = X(p.i, W);
+      var y = yfn(p[field], H);
+      /* 序号不连续处断开，视觉上更符合真实情况 */
+      if (pts.length && (p.i - pts[pts.length-1].i) > 1){
+        stroke(pts, color, lw); pts = [];
+      }
+      pts.push({x:x, y:y, i:p.i});
+    }
+    stroke(pts, color, lw);
+
+    function stroke(a, c, w){
+      if (a.length < 2) return;
+      ctx.strokeStyle = c; ctx.lineWidth = w;
+      ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(a[0].x, a[0].y);
+      for (var k=1;k<a.length;k++) ctx.lineTo(a[k].x, a[k].y);
+      ctx.stroke();
+    }
+  }
+
+  /* ================= 面板刷新 ================= */
+  function refresh(){
+    el('clk').textContent = hhmm(START_MIN + Math.min(S.idx, N-1));
+    el('seqNo').textContent = S.seq;
+    el('stCloud').textContent = S.cloud.length;
+    el('stUp').textContent = S.uploaded;
+    el('stCache').textContent = S.cache.length;
+    el('stRt').textContent = S.retrans;
+    el('stErr').textContent = S.failed;
+
+    var lk = el('stLink');
+    lk.textContent = S.online ? '在线' : '断开';
+    lk.className = 'v ' + (S.online ? 'ok' : 'bad');
+
+    var sc = el('stCache');
+    sc.className = 'v ' + (S.cache.length > 0 ? 'warn' : 'mute');
+    el('barCache').style.width = Math.min(100, S.cache.length/60*100) + '%';
+
+    /* 缺口 = 采集总数 - 云端收到数（含在途） */
+    var expect = S.seq;
+    var gap = Math.max(0, expect - S.cloud.length);
+    var ge = el('stGap');
+    ge.textContent = gap;
+    ge.className = 'v ' + (gap > 0 ? 'bad' : 'ok');
+  }
+
+  /* ================= 核心：一次采集 ================= */
+  function tick(){
+    if (S.idx >= N){ stop(); log('lg-info', '[完成] 200 个采样点回放结束'); return; }
+
+    var p = DATA[S.idx];
+    p.seq = S.seq;
+
+    if (!S.online){
+      /* 断网：数据进本地缓存，绝不丢 */
+      S.cache.push(p);
+      if (S.cache.length === 1){
+        S.offlineBand.push([S.idx, S.idx]);
+        log('lg-off', '[断网] t=' + hhmm(START_MIN+S.idx) + ' 链路中断，数据转存本地缓存');
+      } else {
+        S.offlineBand[S.offlineBand.length-1][1] = S.idx;
+      }
+      log('lg-off', '  ↓ 缓存 seq=' + S.seq + '  T=' + p.temp + '℃ H=' + p.humi + '%  积压=' + S.cache.length);
+    } else {
+      /* 联网：先把积压的历史补传干净，再上当前帧。
+         顺序不能反 —— 否则云端序号会「先跳过去再跳回来」。 */
+      if (S.cache.length > 0){
+        var n = S.cache.length;
+        while (S.cache.length > 0){
+          var h = S.cache.shift();
+          h.rt = true;
+          S.cloud.push(h);
+          S.retrans++;
+        }
+        log('lg-rt', '[补传] 链路恢复，按序补齐 ' + n + ' 条积压数据（标记 RETRANSMIT）');
+      }
+
+      p.rt = false;
+      S.cloud.push(p);
+      S.uploaded++;
+      log('lg-up', '  ↑ 上传 seq=' + S.seq + '  T=' + p.temp + '℃ H=' + p.humi + '%');
+      if (S.idx % 20 === 0) flashChain();
+    }
+
+    S.idx++;
+    S.seq++;
+    refresh();
+    draw();
+  }
+
+  /* ================= 控制 ================= */
+  function plan(){ if (S.timer) clearInterval(S.timer); S.timer = setInterval(tick, 900 / S.speed); }
+  function stop(){
+    S.running = false;
+    if (S.timer){ clearInterval(S.timer); S.timer = null; }
+    el('btnAuto').textContent = '▶ 自动演示';
+  }
+
+  el('btnAuto').addEventListener('click', function(){
+    if (S.running){ stop(); return; }
+    S.running = true;
+    el('btnAuto').textContent = '⏸ 暂停';
+    plan();
+  });
+
+  el('btnStep').addEventListener('click', function(){
+    stop();
+    tick();
+    flashChain();
+  });
+
+  el('btnOffline').addEventListener('click', function(){
+    S.online = !S.online;
+    var b = el('btnOffline');
+    b.classList.toggle('on', !S.online);
+    b.textContent = S.online ? '注入断网' : '恢复链路';
+    log(S.online ? 'lg-ok' : 'lg-off',
+        S.online ? '[恢复] 4G 链路恢复，开始补传'
+                 : '[断网] 4G 链路中断（模拟野外信号丢失）');
+    refresh();
+  });
+
+  el('btnReset').addEventListener('click', function(){
+    stop();
+    S.idx = 0; S.seq = 0; S.online = true; S.cache = []; S.cloud = [];
+    S.uploaded = 0; S.retrans = 0; S.failed = 0; S.offlineBand = [];
+    el('logs').innerHTML = '';
+    el('btnOffline').classList.remove('on');
+    el('btnOffline').textContent = '注入断网';
+    packet.style.left = '0px';
+    packet.classList.remove('show');
+    log('lg-info', '[重置] 回到 07:00，等待开始');
+    refresh(); draw();
+  });
+
+  Array.prototype.forEach.call(el('segSpeed').children, function(b){
+    b.addEventListener('click', function(){
+      Array.prototype.forEach.call(el('segSpeed').children, function(x){ x.classList.remove('on'); });
+      b.classList.add('on');
+      S.speed = parseInt(b.dataset.s, 10);
+      if (S.running) plan();
+    });
+  });
+
+  /* 键盘：空格开始/暂停，N 单步，D 断网 */
+  window.addEventListener('keydown', function(e){
+    if (e.code === 'Space'){ e.preventDefault(); el('btnAuto').click(); }
+    else if (e.key === 'n' || e.key === 'N') el('btnStep').click();
+    else if (e.key === 'd' || e.key === 'D') el('btnOffline').click();
+  });
+
+  window.addEventListener('resize', resize);
+
+  /* ================= 初始化 ================= */
+  log('lg-info', '[启动] DHT11 ok / DTU ok / 链路在线');
+  log('lg-info', '提示：按空格开始暂停，N 单步，D 切换断网');
+  resize(); refresh();
+})();
+</script>
+</body>
+</html>
