@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>基于 4G 通信的道路温度采集系统</title>
+<meta name="description" content="2023 年本科毕业设计，2026 年复盘重建：DHT11 单总线采集、STM32F103 组帧、RS485 传输、4G Cat.1 回传云端。">
+<style>
+  :root{
+    --bg:#f4f6f9; --card:#ffffff; --line:#e2e7ee;
+    --tx:#1a202c; --tx2:#5a6472; --tx3:#8a94a3;
+    --blue:#185FA5;  --blue-bg:#E6F1FB;  --blue-line:#B5D4F4;
+    --green:#3B6D11; --green-bg:#EAF3DE; --green-line:#C0DD97;
+    --amber:#854F0B; --amber-bg:#FAEEDA; --amber-line:#FAC775;
+    --red:#A32D2D;   --red-bg:#FCEBEB;
+    --shadow:0 8px 24px rgba(20,30,45,.09);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#10141a; --card:#191f26; --line:#2a323c;
+      --tx:#e6edf3; --tx2:#9aa7b5; --tx3:#6e7b8a;
+      --blue:#85B7EB;  --blue-bg:#0c2f52;  --blue-line:#185FA5;
+      --green:#C0DD97; --green-bg:#1d3409; --green-line:#3B6D11;
+      --amber:#FAC775; --amber-bg:#3d2708; --amber-line:#854F0B;
+      --red:#F09595;   --red-bg:#2e1313;
+      --shadow:0 8px 24px rgba(0,0,0,.4);
+    }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--tx);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC","Hiragino Sans GB",sans-serif;
+    font-size:15px; line-height:1.78; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1000px; margin:0 auto; padding:58px 28px 76px}
+
+  .kicker{font-size:12.5px; letter-spacing:.08em; color:var(--tx3); margin-bottom:16px}
+  h1{font-size:29px; font-weight:600; line-height:1.38; margin:0 0 18px; letter-spacing:-.01em}
+  .lede{font-size:16px; color:var(--tx2); margin:0 0 26px; max-width:68ch}
+  .chain{
+    display:inline-block; font-family:ui-monospace,Consolas,"Courier New",monospace;
+    font-size:13px; line-height:1.95; color:var(--blue);
+    background:var(--blue-bg); border:1px solid var(--blue-line);
+    border-radius:9px; padding:11px 18px; max-width:100%;
+  }
+
+  h2{
+    font-size:12.5px; font-weight:600; letter-spacing:.1em; color:var(--tx3);
+    margin:56px 0 20px; padding-bottom:11px; border-bottom:1px solid var(--line);
+  }
+
+  .cards{display:grid; grid-template-columns:1fr; gap:16px}
+  @media(min-width:840px){ .cards{grid-template-columns:repeat(3,1fr)} }
+  .card{
+    display:block; text-decoration:none; color:inherit;
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:26px 22px 22px; transition:transform .16s ease, box-shadow .16s ease;
+  }
+  .card:hover{transform:translateY(-3px); box-shadow:var(--shadow)}
+  .card.c-blue{border-top:3px solid var(--blue)}
+  .card.c-green{border-top:3px solid var(--green)}
+  .card.c-amber{border-top:3px solid var(--amber)}
+  .num{font-family:ui-monospace,Consolas,monospace; font-size:12px; color:var(--tx3); margin-bottom:12px}
+  .card h3{font-size:17px; font-weight:600; margin:0 0 11px; line-height:1.4}
+  .card p{font-size:13.5px; color:var(--tx2); margin:0 0 16px; line-height:1.8}
+  .meta{
+    font-size:12px; color:var(--tx3); margin-bottom:15px;
+    padding-top:13px; border-top:1px dashed var(--line);
+  }
+  .go{font-size:13px; font-weight:500}
+  .c-blue .go{color:var(--blue)}
+  .c-green .go{color:var(--green)}
+  .c-amber .go{color:var(--amber)}
+
+  .box{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:26px 28px}
+  .box > p:first-child{margin-top:0}
+  .box > p:last-child{margin-bottom:0}
+  .box.warn{background:var(--red-bg); border-color:transparent}
+  .box.warn .lead{color:var(--red); font-weight:500; margin-bottom:4px}
+
+  .repolink{
+    display:inline-block; font-family:ui-monospace,Consolas,monospace; font-size:14px;
+    color:var(--blue); text-decoration:none; word-break:break-all;
+    border-bottom:1px solid var(--blue-line); padding-bottom:2px; margin:4px 0 2px;
+  }
+  .repolink:hover{border-bottom-color:var(--blue)}
+
+  .facts{margin:18px 0 0; padding-left:20px; color:var(--tx2); font-size:13.5px}
+  .facts li{margin:9px 0}
+  .facts b, .box.warn b{color:var(--tx); font-weight:600}
+
+  .box.warn ol{margin:14px 0 0; padding-left:22px}
+  .box.warn li{margin:13px 0; color:var(--tx2); font-size:13.5px}
+  .box.warn li:last-child{margin-bottom:0}
+
+  footer{margin-top:58px; padding-top:26px; border-top:1px solid var(--line)}
+  .tags{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px}
+  .tag{font-size:12px; padding:4px 13px; border-radius:20px; border:1px solid}
+  .t-green{color:var(--green); background:var(--green-bg); border-color:var(--green-line)}
+  .t-blue{color:var(--blue); background:var(--blue-bg); border-color:var(--blue-line)}
+  .t-gray{color:var(--tx3); background:var(--card); border-color:var(--line)}
+  .foot-note{font-size:12.5px; color:var(--tx3); margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">本科毕业设计 · 2023 实做 ｜ 2026 复盘重建</div>
+    <h1>基于 4G 通信的道路温度采集系统</h1>
+    <p class="lede">
+      2023 年的本科毕设，要解决的是「把远端道路的温湿度采上来、经 4G 传回云端」。
+      当年留下的只有一份论文和几段零散代码；2026 年复盘时，把它们重建成了一套分层完整的 STM32 工程 ——
+      采集、组帧、传输、确认、补传各有归属，不再揉在一个函数里。
+    </p>
+    <div class="chain">
+      DHT11 单总线 → STM32F103 组帧（CRC16）→ RS485 → 4G Cat.1 DTU → 原子云
+    </div>
+  </header>
+
+  <h2>在线查看</h2>
+  <div class="cards">
+
+    <a class="card c-blue" href="./06_项目说明书/项目说明书.html">
+      <div class="num">01</div>
+      <h3>项目说明书</h3>
+      <p>完全没有电子基础也能看懂。从「为什么要做」一路讲到代码逐行走读，最后一章是面试复述训练。</p>
+      <div class="meta">11 章 + 2 附录 · 36 条术语表 · 11 张实绘图</div>
+      <span class="go">打开 →</span>
+    </a>
+
+    <a class="card c-green" href="./02_演示系统/道路温度采集_演示.html">
+      <div class="num">02</div>
+      <h3>演示系统</h3>
+      <p>不需要任何硬件。点「自动演示」会跑论文里那 3 小时 20 分的数据；中途点「注入断网」，能看见数据转进本地缓存、链路恢复后一次性补齐。</p>
+      <div class="meta">单文件 · 零依赖 · 不联网</div>
+      <span class="go">打开 →</span>
+    </a>
+
+    <a class="card c-amber" href="./03_项目复现指南/项目复现指南.html">
+      <div class="num">03</div>
+      <h3>项目复现指南</h3>
+      <p>想真做一遍：要买什么、怎么接线、分几步走。价格与规格都标了核实状态，没核实的写了「未核实」。</p>
+      <div class="meta">采购清单 · 接线 · 分步流程</div>
+      <span class="go">打开 →</span>
+    </a>
+
+  </div>
+
+  <h2>代码与工程</h2>
+  <div class="box">
+    <p>STM32 工程、单元测试与全部文档都在 GitHub：</p>
+    <a class="repolink" href="https://github.com/DOURENCHI/STM32-4g-road-temperature">github.com/DOURENCHI/STM32-4g-road-temperature</a>
+    <ul class="facts">
+      <li>应用层是<b>纯逻辑</b>，不引用任何 STM32 头文件，可以在 PC 上用 gcc 直接编译</li>
+      <li>单元测试 <b>112 项断言全部通过</b>，测试结果已留档，附在仓库里</li>
+      <li>驱动层<b>未经硬件回归验证</b> —— 硬件已不在手，只做了静态检查与 PC 端测试</li>
+    </ul>
+  </div>
+
+  <h2>先说清楚边界</h2>
+  <div class="box warn">
+    <p class="lead">这是一份本科毕业设计，不是成熟产品。三件事我主动写在前面：</p>
+    <ol>
+      <li>
+        <b>硬件已不在手。</b>DHT11、战舰 STM32F103 板、ATK-IDM751C 模块都已经不在身边。
+        GPIO 时序、串口收发、AT 指令应答这些依赖硬件的部分，一律未经实测。
+      </li>
+      <li>
+        <b>论文里从来没有「断网补传」。</b>数据帧 CRC16 校验、断网本地缓存、重传与 ACK 确认，
+        都是 2026 年复盘时补做的。论文全文检索「断网 / 补传 / 重传 / CRC」，出现次数均为 0；
+        源文件头部一律标注了时间线，不会含糊成「当年做的就是这套」。
+      </li>
+      <li>
+        <b>论文有一处实测数据与传感器分辨率对不上。</b>论文写的温度带两位小数（18.83 ℃），
+        但 DHT11 的分辨率就是 1 ℃，物理上读不出这个精度；带 0.1 ℃ 的是 DHT22 / AM2302。
+        这一点被追问时如实说明，不做辩解。
+      </li>
+    </ol>
+  </div>
+
+  <footer>
+    <div class="tags">
+      <span class="tag t-green">2023 实做</span>
+      <span class="tag t-blue">2026 复盘补做</span>
+      <span class="tag t-gray">未经硬件回归验证</span>
+    </div>
+    <p class="foot-note">
+      MIT License ｜ 整理于 2026-10 ｜ 论文原文未包含在本站内
+    </p>
+  </footer>
+
+</div>
+</body>
+</html>
